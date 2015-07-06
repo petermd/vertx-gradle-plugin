@@ -55,6 +55,26 @@ class VertxPlugin implements Plugin<Project> {
         }
       }
 
+      project.task("installDeps", type: JavaExec, dependsOn: ['classes', 'localMod'], description: 'install module deps') {
+
+        // Always execute
+        outputs.upToDateWhen { false }
+
+        main = "org.vertx.java.platform.impl.cli.Starter"
+
+        systemProperties = [
+          "vertx.mods"                                  : new File("build/mods").absolutePath,
+          "org.vertx.logger-delegate-factory-class-name": "org.vertx.java.core.logging.impl.SLF4JLogDelegateFactory"
+        ]
+
+        args = ["pulldeps", "${mod.fqName()}"].flatten()
+
+        logger.info("args=[" + args.join('|') + "]")
+
+        classpath = project.sourceSets.main.runtimeClasspath
+        workingDir = "build/local/${mod.fqName()}"
+      }
+
       project.task("runMod", type: JavaExec, dependsOn: ['classes','localMod'], description: 'run module') {
 
         // Always execute
@@ -72,8 +92,6 @@ class VertxPlugin implements Plugin<Project> {
         def clArgs=project.hasProperty('args')?project.args.split('\\s+'):[]
 
         args=[ "runmod", "${mod.fqName()}" ].plus(clArgs).flatten()
-
-        //systemProperties=["vertxResources":"src/web/html:src/web/javascript:src/web/components"]
 
         logger.info("clArgs=["+clArgs.join('|')+"]")
         logger.info("args=["+args.join('|')+"]")
@@ -196,8 +214,8 @@ class VertxPlugin implements Plugin<Project> {
     project.dependencies.add('testCompile', "junit:junit:${mod.junitVersion}");
     project.dependencies.add('testCompile', "io.vertx:testtools:${mod.testToolsVersion}");
     // Add logging for runMod
-    project.dependencies.add('runtime', "org.slf4j:slf4j-log4j12:1.6.+")
-    project.dependencies.add('runtime', "log4j:log4j:1.2.+")
+    project.dependencies.add('provided', "org.slf4j:slf4j-log4j12:1.6.+")
+    project.dependencies.add('provided', "log4j:log4j:1.2.+")
 
     // Add all non-runnable modules to dependencies
     project.extensions.vertx.modules.requireModules.each { m -> project.dependencies.add('provided', m) }
