@@ -28,24 +28,13 @@ class VertxPlugin implements Plugin<Project> {
       mod.groupId = project.group.toString()
       mod.version = project.version
 
-      project.task("installMod", type: Copy, dependsOn: 'classes', description: 'install mod') {
-        into "build/mods/${mod.fqName()}"
-        from project.tasks.compileJava
-        // Include src/main/resources
-        from 'src/main/resources'
-        // Package compile classpath excepting the provided dependencies
-        into('lib') {
-          from project.configurations.compile - project.configurations.provided
-        }
-      }
-
       project.task("localMod", type: Copy, dependsOn: 'classes', description: 'local mod') {
         into "build/local/${mod.fqName()}"
         from 'src/main/mod'
       }
 
-      project.task("zipMod", type: Zip, dependsOn: 'classes', description: 'create module artifact') {
-        archiveName = "${mod.fqName()}.zip"
+      project.task("installMod", type: Copy, dependsOn: 'classes', description: 'install mod') {
+        into "build/mods/${mod.fqName()}"
         from project.tasks.compileJava
         // Include src/main/resources
         from 'src/main/resources'
@@ -75,6 +64,17 @@ class VertxPlugin implements Plugin<Project> {
         workingDir = "build/local/${mod.fqName()}"
       }
 
+      project.task("zipMod", type: Zip, dependsOn: 'classes', description: 'create module artifact') {
+        archiveName = "${mod.fqName()}.zip"
+        from project.tasks.compileJava
+        // Include src/main/resources
+        from 'src/main/resources'
+        // Package compile classpath excepting the provided dependencies
+        into('lib') {
+          from project.configurations.compile - project.configurations.provided
+        }
+      }
+
       project.task("runMod", type: JavaExec, dependsOn: ['classes','localMod'], description: 'run module') {
 
         // Always execute
@@ -96,8 +96,8 @@ class VertxPlugin implements Plugin<Project> {
         logger.info("clArgs=["+clArgs.join('|')+"]")
         logger.info("args=["+args.join('|')+"]")
 
-        classpath=project.sourceSets.main.runtimeClasspath
-        workingDir="build/local/${mod.fqName()}"
+        classpath=project.sourceSets.test.runtimeClasspath
+        workingDir="build"
       }
 
       defineArtifact(project)
@@ -193,12 +193,6 @@ class VertxPlugin implements Plugin<Project> {
 
     // Include in the Java 'compile' configuration
     project.configurations.getByName(JavaPlugin.COMPILE_CONFIGURATION_NAME).extendsFrom(providedConfiguration);
-
-    project.logger.info("Specify JDK 1.7 as source/target");
-
-    // Default JDK for Vert.x 2 is Java 7
-    project.sourceCompatibility=1.7
-    project.targetCompatibility=1.7
   }
 
   void addDependencies(Project project) {
